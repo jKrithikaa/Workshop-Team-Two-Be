@@ -2,8 +2,13 @@ import re
 import sqlite3
 from flask import Flask, request, jsonify
 from datetime import datetime, timedelta
+from flask_cors import CORS  # Import CORS
 
+# Initialize the Flask app
 app = Flask(__name__)
+
+# Enable CORS for the app
+CORS(app)  # This should be called after app initialization
 
 # Function to validate email format
 def is_valid_email(email):
@@ -15,7 +20,7 @@ def is_valid_email(email):
 
 # Function to validate phone number (should include country code)
 def is_valid_phone_number(phone_number):
-    phone_regex = r'^\+(\d{1,3})\s\d{7,12}$'
+    phone_regex = r'^\+(\d{1,3})\s\d{4,12}$'
     return bool(re.match(phone_regex, phone_number))
 
 # Function to check if email is recent (submitted within the last 24 hours)
@@ -39,17 +44,17 @@ def submit_form():
 
     name = data.get('name')
     email = data.get('email')
-    phone_number = data.get('phone_number')
+    phone_number = data.get('phone_number')  # This is now optional
     message = data.get('message')
 
     errors = {}
 
     # Validation
     if not name or len(name) < 2:
-        errors["name"] = "Name is required and must be at least 2 characters long."
+        errors["name"] = "Name must be at least 2 characters long."
     if not email or not is_valid_email(email):
         errors["email"] = "Invalid email format. Please use a valid email address like @gmail.com, @yahoo.com, etc."
-    if not phone_number or not is_valid_phone_number(phone_number):
+    if phone_number and not is_valid_phone_number(phone_number):  # Only validate phone if provided
         errors["phone_number"] = "Phone number is invalid. It should include a country code and be between 7 and 12 digits long."
     if not message or len(message) < 5 or len(message) > 250:
         errors["message"] = "Message must be between 5 and 250 characters."
@@ -63,8 +68,8 @@ def submit_form():
     # Insert the form data into the SQLite database
     connection = sqlite3.connect('enquiries.db')
     cursor = connection.cursor()
-    cursor.execute('''
-        INSERT INTO enquiries (name, email, phone_number, message)
+    cursor.execute(''' 
+        INSERT INTO enquiries (name, email, phone_number, message) 
         VALUES (?, ?, ?, ?)
     ''', (name, email, phone_number, message))
     connection.commit()
@@ -76,4 +81,5 @@ def submit_form():
     }), 200
 
 if __name__ == "__main__":
+    app.run(port=6000)
     app.run(debug=True)
